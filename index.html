@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UCAT VR Practice - MedwithPurpose</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* Custom styles for better UI/UX */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrolling on body */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff; /* UPDATED: Body background to white */
+        }
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 2rem); 
+            width: 100%;
+            background-color: #ffffff; 
+            border: 1px solid #d1d5db; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-radius: 0.375rem; 
+            margin: 1rem; 
+            overflow: hidden; 
+        }
+        /* Header and Footer */
+        .header-bar, .footer-bar {
+            flex-shrink: 0; 
+            background-color: #006DAA; 
+            color: white; 
+            padding: 0.75rem 1.5rem; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-bar span, .header-bar div {
+             color: white;
+        }
+        #timer {
+             background-color: rgba(255, 255, 255, 0.2); 
+             color: white;
+             font-weight: bold;
+             padding: 0.25rem 0.75rem; 
+             border-radius: 0.25rem; 
+        }
+        .footer-bar button {
+            background-color: transparent;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.5); 
+            padding: 0.4rem 0.8rem; 
+            font-size: 0.8rem; 
+            border-radius: 0.375rem;
+             transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .footer-bar button:hover:not(:disabled) {
+            background-color: rgba(255, 255, 255, 0.15); 
+            border-color: white;
+        }
+         .footer-bar button:disabled {
+             opacity: 0.5;
+             cursor: not-allowed;
+             border-color: rgba(255, 255, 255, 0.3);
+         }
+         .footer-bar button#next-button {
+             background-color: #ffffff; 
+             color: #006DAA; 
+             border: 1px solid white;
+             font-weight: 500;
+         }
+         .footer-bar button#next-button:hover:not(:disabled) {
+             background-color: #f0f0f0; 
+         }
+         #flag-button {
+             background-color: transparent;
+             border: 1px solid white;
+             color: white;
+             transition: background-color 0.2s ease, color 0.2s ease; 
+         }
+         #flag-button:hover {
+             background-color: white;
+             color: #006DAA;
+         }
+          #flag-button.flagged {
+             background-color: #facc15; 
+             border-color: #facc15;
+             color: #422006; 
+          }
+          #flag-button.flagged:hover {
+             background-color: #f59e0b; 
+             border-color: #f59e0b;
+          }
+
+        .main-content-area {
+            flex-grow: 1; 
+            display: flex;
+            overflow: hidden; 
+            padding: 1rem; 
+            gap: 1rem; 
+        }
+        .passage-column {
+            flex: 0 0 60%; 
+            overflow-y: auto; 
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            background-color: #ffffff; 
+            height: 100%; 
+        }
+        .question-column {
+             flex: 0 0 40%; 
+             overflow-y: auto; 
+             padding: 1rem;
+             border: 1px solid #e5e7eb;
+             border-radius: 0.375rem;
+             background-color: #ffffff; 
+             height: 100%; 
+             position: relative; 
+        }
+
+        .selected-answer {
+            background-color: #bfdbfe !important; 
+            border-color: #3b82f6 !important; 
+        }
+        .nav-answered {
+            background-color: #a7f3d0; 
+        }
+        .nav-current {
+            border: 2px solid #3b82f6 !important; 
+            font-weight: bold;
+        }
+        .nav-flagged, .review-flagged {
+            border: 2px solid #f59e0b !important; 
+            position: relative; 
+        }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+        .modal-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 0.5rem; }
+        .modal.flex { display: flex; }
+
+        button, .button {
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+        }
+        button:active, .button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .primary-button { background-color: #3b82f6; color: white; border: 1px solid transparent; }
+        .primary-button:hover:not(:disabled) { background-color: #2563eb; }
+        .secondary-button { background-color: white; color: #374151; border: 1px solid #d1d5db; }
+        .secondary-button:hover:not(:disabled) { background-color: #f9fafb; }
+        .danger-button { background-color: #ef4444; color: white; border: 1px solid transparent; }
+        .danger-button:hover:not(:disabled) { background-color: #dc2626; }
+        .subtle-button { background-color: #f3f4f6; color: #374151; border: 1px solid transparent; }
+        .subtle-button:hover:not(:disabled) { background-color: #e5e7eb; }
+
+        .option-label {
+            display: block;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db; 
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+            background-color: #ffffff; 
+            color: #111827; 
+            font-size: 1rem;   
+        }
+        .option-label:hover:not(.selected-answer) { 
+            background-color: #f3f4f6; 
+            border-color: #a5b4fc; 
+        }
+        input[type="radio"] { display: none; }
+
+       .correct-answer-li { background-color: #dcfce7; border-left: 4px solid #22c55e; }
+       .incorrect-answer-li { background-color: #fee2e2; border-left: 4px solid #ef4444; }
+       .result-item-clickable-li { 
+           cursor: pointer;
+           transition: background-color 0.2s ease-in-out;
+           border: 1px solid #e5e7eb;
+           border-radius: 0.5rem;
+           margin-bottom: 0.5rem;
+           padding: 0.75rem;
+       }
+       .result-item-clickable-li:hover {
+           background-color: #f0f0f0;
+       }
+       .correct-indicator-text { color: #16a34a; font-weight: 600;}
+       .incorrect-indicator-text { color: #dc2626; font-weight: 600;}
+
+        #results-grid-container { 
+            display: grid;
+            grid-template-columns: repeat(8, 1fr); /* 8 columns */
+            grid-template-rows: repeat(2, 1fr); /* 2 rows */
+            gap: 0.75rem; /* Balanced spacing between boxes */
+            padding: 1rem 0; 
+            overflow-y: auto; 
+            max-width: 100%; /* Use full width of container */
+            width: 100%;
+            margin: 0 auto; /* Center the grid */
+        }
+        .result-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1 / 1; /* Keep boxes square */
+            padding: 0.5rem; /* Padding for better content display */
+            border-radius: 0.375rem;
+            color: white; 
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 0.25rem;
+            width: 100%;
+            height: auto;
+            min-width: 3rem; /* Minimum width */
+        }
+        .result-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .result-box-correct {
+            background-color: #22c55e; 
+            border: 1px solid #16a34a; 
+        }
+        .result-box-incorrect {
+            background-color: #ef4444; 
+            border: 1px solid #dc2626; 
+        }
+        .result-box-flagged { 
+            outline: 2px solid #f59e0b; 
+            outline-offset: 2px;
+        }
+        .result-box .time-spent {
+            font-size: 1rem; /* Balanced font size */
+            font-weight: 600; 
+            line-height: 1.1;
+        }
+        .question-num-label {
+            font-size: 0.75rem; /* Balanced font size */
+            color: #374151;
+            text-align: center;
+            width: 100%;
+        }
+        
+        /* Media queries for responsive grid */
+        @media (max-width: 992px) {
+            #results-grid-container {
+                grid-template-columns: repeat(8, 1fr);
+                max-width: 100%;
+            }
+        }
+        @media (max-width: 768px) {
+            #results-grid-container {
+                grid-template-columns: repeat(4, 1fr); /* 4 columns on medium screens */
+                grid-template-rows: repeat(4, 1fr); /* 4 rows on medium screens */
+                max-width: 100%;
+                gap: 0.5rem;
+            }
+        }
+        @media (max-width: 480px) {
+            #results-grid-container {
+                grid-template-columns: repeat(4, 1fr); /* Changed from 2 to 4 columns */
+                grid-template-rows: repeat(4, 1fr); /* Changed from 8 to 4 rows */
+                gap: 0.4rem;
+            }
+            .result-box .time-spent {
+                font-size: 0.85rem;
+            }
+        }
+         .explanation-box {
+             background-color: #f3f4f6; 
+             border: 1px solid #d1d5db;    
+             padding: 0.5rem 0.75rem; 
+             margin-top: 0.75rem; 
+             border-radius: 0.375rem; 
+             font-size: 0.875rem; 
+             color: #111827; 
+         }
+
+         .review-grid-button {
+             padding: 0.5rem 0.25rem; 
+             border: 1px solid #d1d5db; 
+             border-radius: 0.375rem;
+             text-align: center;
+             transition: background-color 0.2s ease, border-color 0.2s ease;
+             font-size: 0.875rem;
+             line-height: 1.25rem;
+             cursor: pointer;
+         }
+         .review-grid-button-answered {
+             background-color: #dcfce7; 
+             border-color: #86efac; 
+             color: #15803d; 
+         }
+         .review-grid-button-unanswered {
+             background-color: #f3f4f6; 
+             border-color: #d1d5db; 
+             color: #4b5563; 
+         }
+          .review-grid-button:hover {
+             filter: brightness(95%); 
+          }
+
+        @media (max-width: 768px) {
+            #app-container {
+                 height: auto; 
+                 margin: 0.5rem;
+            }
+            .main-content-area {
+                flex-direction: column; 
+                padding: 0.5rem;
+                gap: 0.5rem;
+            }
+            .passage-column, .question-column {
+                flex-basis: auto;
+                width: 100%; 
+                height: auto; 
+                max-height: 40vh; 
+                padding: 0.75rem;
+            }
+            .header-bar, .footer-bar {
+                padding: 0.5rem 1rem;
+            }
+            .header-bar span, .footer-bar button { 
+                font-size: 0.8rem;
+            }
+            button, .button {
+                padding: 0.4rem 0.8rem;
+            }
+             .footer-bar button {
+                 padding: 0.3rem 0.6rem;
+                 font-size: 0.75rem;
+             }
+            .grid-cols-5 { grid-template-columns: repeat(4, minmax(0, 1fr)); } 
+            #review-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } 
+            .review-grid-button { font-size: 0.8rem; }
+            /* #results-grid-container { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); } REMOVED to keep 8 columns */
+        }
+         @media (max-width: 480px) {
+             .grid-cols-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } 
+             #review-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } 
+             .header-bar span, .footer-bar button { font-size: 0.75rem; }
+             button, .button {
+                 padding: 0.3rem 0.6rem;
+             }
+              .footer-bar button {
+                 padding: 0.25rem 0.5rem;
+                 font-size: 0.7rem;
+             }
+             .option-label { padding: 0.5rem 0.75rem; font-size: 0.875rem;} 
+             .review-grid-button { font-size: 0.75rem; }
+             /* #results-grid-container { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); } REMOVED to keep 8 columns */
+         }
+         /* UPDATED: Media queries for result box text on smaller screens with 8 columns */
+        @media (max-width: 600px) { 
+            #results-grid-container {
+                gap: 0.25rem; /* Further reduce gap for small screens */
+            }
+            .result-box .time-spent {
+                font-size: 0.875rem; /* text-sm */
+            }
+            .result-box .question-num-label {
+                font-size: 0.6rem; 
+            }
+        }
+        @media (max-width: 400px) { 
+            .result-box .time-spent {
+                font-size: 0.75rem; /* text-xs */
+            }
+            .result-box .question-num-label {
+                font-size: 0.5rem; 
+            }
+             .result-box {
+                padding: 0.1rem; /* Minimal padding for very small squares */
+            }
+        }
+
+
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    </head>
+<body>
+
+    <div id="app-container">
+
+        <div id="setup-screen" class="p-6 md:p-8 flex flex-col justify-center items-center h-full">
+             <div class="text-center mb-6">
+                <img src="https://ik.imagekit.io/mwp/MWP%20Color%20no%20background.png?updatedAt=1745982959141"
+                     alt="MedwithPurpose Logo"
+                     class="mx-auto h-20 w-auto mb-4"
+                     onerror="this.style.display='none'; this.onerror=null;">
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-900">UCAT Verbal Reasoning Practice</h1> <p class="text-gray-900 mt-2">Prepare for the UCAT VR section.</p> <p class="text-sm text-gray-900 mt-4"> This section contains <strong id="setup-question-count">16 questions</strong> and you have <strong id="setup-time-limit">10 minutes</strong> to complete it.
+                 </p>
+            </div>
+            <div class="space-y-4 w-full max-w-md">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-900">Name:</label> <input type="text" id="name" name="name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Enter your name">
+                </div>
+                <div>
+                    <label for="goal" class="block text-sm font-medium text-gray-900">Goal (Score out of 16):</label> <input type="number" id="goal" name="goal" min="0" max="16" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., 12">
+                </div>
+                <div>
+                    <label for="focus-area" class="block text-sm font-medium text-gray-900">Area of Focus / Intention For Practice:</label> <input type="text" id="focus-area" name="focus-area" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., True/False/Can't Tell, Speed">
+                </div>
+            </div>
+            <div class="mt-8 text-center">
+                <button id="start-button" class="primary-button text-lg px-8 py-3">
+                    Start Exam
+                </button>
+            </div>
+        </div>
+
+        <div id="exam-screen" class="hidden flex flex-col h-full">
+            <div class="header-bar">
+                <span id="exam-title" class="font-semibold">Verbal Reasoning</span>
+                <div class="flex items-center space-x-4">
+                    <div id="timer" class="text-base px-3 py-1 rounded-md">10:00</div>
+                    <span class="text-sm">Question <span id="question-number-info">1</span> of 16</span>
+                    <button id="flag-button" class="text-sm font-medium border border-white rounded px-2 py-1 transition-colors duration-150">
+                         Flag for Review
+                    </button>
+                </div>
+            </div>
+
+            <div class="main-content-area">
+                <div class="passage-column">
+                    <h3 class="text-lg font-semibold mb-2 sticky top-0 bg-white text-gray-900 pb-1">Passage <span id="passage-number">1</span></h3>
+                    <div id="passage-text" class="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
+                        </div>
+                </div>
+
+                <div class="question-column">
+                     <h4 class="text-md font-semibold mb-3 sticky top-0 bg-white text-gray-900 pb-1">Question <span id="question-number">1</span></h4>
+                    <p id="question-text" class="mb-4 text-gray-900 text-base">
+                        </p>
+                    <div id="options-container" class="space-y-2">
+                        </div>
+                    <div id="review-explanation-container"></div>
+                </div>
+            </div>
+
+            <div class="footer-bar">
+                 <button id="back-to-results-button" class="hidden mr-auto">← Back to Results</button>
+                 <button id="end-exam-button-footer">End Exam</button>
+                 <div class="flex items-center space-x-2 ml-auto">
+                     <button id="prev-button" disabled>← Previous (Alt+P)</button>
+                     <button id="navigator-button">Navigator</button>
+                     <button id="next-button">Next (Alt+N) →</button>
+                 </div>
+            </div>
+        </div>
+
+        <div id="review-screen" class="hidden p-6 md:p-8 flex flex-col items-center h-full overflow-y-auto">
+             <div class="w-full max-w-3xl mb-4 flex justify-between items-center">
+                 <h2 class="text-2xl font-bold text-gray-900">Review Your Answers</h2> <button id="filter-flagged-button" class="secondary-button text-sm">Show Flagged Only</button>
+             </div>
+             <p class="text-center text-gray-900 mb-6">Click on a question number to review it. Green indicates answered, Yellow border indicates flagged.</p> <div id="review-grid" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-10 gap-3 mb-6 w-full max-w-3xl">
+                </div>
+            <div class="mt-auto pt-6">
+                <button id="end-exam-button" class="danger-button text-lg px-8 py-3">
+                    End Exam & See Results
+                </button>
+            </div>
+        </div>
+
+        <div id="results-screen" class="hidden p-6 md:p-8 flex flex-col h-full">
+             <div class="text-center mb-6 flex-shrink-0">
+                <img src="https://ik.imagekit.io/mwp/MWP%20Color%20no%20background.png?updatedAt=1745982959141"
+                     alt="MedwithPurpose Logo"
+                     class="mx-auto h-16 w-auto mb-4"
+                     onerror="this.style.display='none'; this.onerror=null;">
+                 <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Exam Results</h2> </div>
+            <div class="bg-blue-50 p-4 rounded-lg mb-6 text-center flex-shrink-0 text-gray-900"> <p class="text-lg font-semibold">Your Score: <span id="score" class="text-gray-900">0</span> / <span id="total-questions-results">16</span></p> <p>Time Taken: <span id="time-taken"></span></p>
+            </div>
+            <h3 class="text-xl font-semibold mb-2 flex-shrink-0 text-gray-900">Detailed Results:</h3> <p class="text-sm text-gray-900 mb-4 flex-shrink-0">Click on a question box below to review it.</p>
+            <div id="results-grid-container">
+                </div>
+            <div class="mt-6 flex-shrink-0 border-t pt-4">
+                 <div class="mb-4">
+                    <label for="focus-rating" class="block text-md font-semibold text-gray-900 mb-1">My focus out of 5 (1 very low, 5 very high):</label> <input type="number" id="focus-rating" name="focus-rating" min="1" max="5" class="mt-1 block w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="1-5">
+                 </div>
+                 <div>
+                    <label for="reflection-text" class="block text-md font-semibold text-gray-900 mb-1">Main takeaway from this practice:</label> <textarea id="reflection-text" name="reflection-text" rows="3" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Reflect on your performance, strategies, or areas for improvement..."></textarea>
+                 </div>
+            </div>
+             <div class="mt-6 text-center flex-shrink-0 flex justify-center space-x-4">
+                <button onclick="window.location.reload()" class="secondary-button px-6 py-2">
+                    Try Again
+                </button>
+                <button id="download-pdf-button" class="primary-button px-6 py-2">
+                    Download Results PDF
+                </button>
+            </div>
+        </div>
+
+        <div id="navigator-modal" class="modal">
+            <div class="modal-content bg-white p-6 rounded-lg shadow-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-gray-900">Question Navigator</h3> <button id="close-modal-button" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+                </div>
+                 <p class="text-sm text-gray-900 mb-4">Click a number to jump. Green: answered, Yellow border: flagged.</p> <div id="navigator-grid" class="grid grid-cols-5 gap-3">
+                    </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Data ---
+        const passages = [
+            // Passage 1: Keynesian Economics and the Paradox of Thrift
+            `In Keynesian economics, the "paradox of thrift" refers to a counterintuitive idea: that while saving is beneficial to individuals, an increase in collective saving during a downturn can actually reduce overall economic growth.  This occurs because one person's spending is another's income.  If many households simultaneously cut back on spending to increase savings, businesses experience reduced demand, leading them to cut costs, lay off workers, or lower wages.  As incomes fall, total savings in the economy may paradoxically decline, despite each household trying to save more.  This concept was first articulated by John Maynard Keynes during the Great Depression of the 1930s.  Keynes argued that during periods of economic slack, active government intervention—through fiscal stimulus and public investment—was essential to counteract the fall in aggregate demand caused by rising private saving.  The paradox does not apply in the same way during times of full employment.  When an economy is at or near its productive capacity, increased saving can lead to more investment in capital goods rather than reduced demand.  Classical economists, in contrast to Keynesians, believe that savings naturally find their way into productive investment through interest rate adjustments, making recessions self-correcting over time.  Critics of the paradox argue that it ignores long-term benefits of saving, such as improved capital accumulation and resilience against future shocks.  However, empirical studies of past recessions in the U.S. and Japan show that abrupt increases in household savings rates often coincide with declining GDP and consumer confidence, particularly in liquidity traps where interest rates are near zero and monetary policy loses its effectiveness.`,
+            // Passage 2: Wangari Maathai and the Green Belt Movement
+            `Wangari Maathai's life defied expectations of her time, her gender, and even her profession.  Born in rural Kenya in 1940, she came of age in a country still under British colonial rule.  Against a backdrop of systemic gender bias and minimal access to education for girls, she earned a scholarship to study biology in the United States during the Kennedy-era African Airlift program.  She would go on to earn a doctorate in veterinary anatomy—the first woman in East or Central Africa to do so.  But it was not her academic credentials that made her a global icon.  In 1977, Maathai founded the Green Belt Movement, a grassroots environmental initiative that began by simply planting trees.  What set her apart was the belief that environmental degradation, poverty, and disenfranchisement were not separate issues but symptoms of the same systemic failure.  Her campaign taught rural women to plant trees, restore ecosystems, and earn income—an act as politically charged as it was ecologically sound in a nation marred by authoritarianism and corruption.  Despite imprisonment, smear campaigns, and violent pushback, Maathai remained steadfast.  She once said, "Until you dig a hole, you plant a tree, you water it and make it survive, you haven't done a thing."  Her approach combined scientific rigor with civic resistance and was recognized when she became the first African woman awarded the Nobel Peace Prize in 2004.\n\nTo reduce Maathai's life to environmental activism alone would be to overlook the philosophical core of her work: that sustainable change must be rooted in dignity, participation, and ecology—not just policy.`,
+            // Passage 3: The Murray-Darling Basin Plan
+            `The Murray-Darling Basin, stretching across four Australian states and one territory, supports over a third of the nation's agricultural output.  In New South Wales, the Basin's rivers are vital not just for irrigation, but also for cultural heritage, Indigenous livelihoods, and ecosystems that depend on regular flooding cycles.  However, water extraction has long outpaced sustainable levels.\n\nIn 2012, the Murray-Darling Basin Plan was introduced to rebalance environmental and economic demands by capping water usage and returning a portion to the environment.  This reform, while praised for its ambition, has been politically fraught.  Farmers argue the reductions limit their viability, while ecologists warn the cuts don't go far enough.  The plan's target of returning 2,750 gigalitres to the river system has faced repeated delays, with accusations of water hoarding, illegal diversions, and weak enforcement undermining public trust.  Meanwhile, climate change has compounded pressures. Rainfall in the southern Basin has declined significantly over the past two decades, and longer droughts have become more frequent.  A 2020 report by the CSIRO warned that even with full compliance, current water-sharing models may not protect against ecological collapse under projected warming scenarios.  Policymakers now face a difficult balancing act: protect food production and rural communities, honour Indigenous water rights, and sustain a fragile river system.  As the next major review of the Plan approaches, calls are growing for a more adaptive model—one that accounts not just for annual rainfall, but for long-term climate variability and enforceable environmental safeguards.`,
+            // Passage 4: Mycorrhizal Networks (The "Wood Wide Web")
+            `Recent studies have shed light on the complex underground relationships between trees and fungi, known as mycorrhizal networks.  These symbiotic connections involve fungi attaching to tree roots and extending vast networks of filaments, called hyphae, into the soil.  Through these filaments, trees and fungi engage in a mutual exchange: fungi receive sugars produced by the trees through photosynthesis, while trees gain improved access to water and nutrients, especially phosphorus and nitrogen.  More surprisingly, researchers have found that these networks may allow trees to communicate and even transfer resources to one another.  In some documented cases, older trees have sent carbon-rich compounds to saplings that were shaded and unable to photosynthesise effectively.  This phenomenon, often referred to as the "wood wide web," has led to a reconsideration of forest ecology, shifting the perception of trees from solitary organisms to members of interdependent communities.  However, this view is not without critics. Some scientists caution that attributing intentionality or communication to trees anthropomorphises what could be basic chemical signaling.  Others point to the variability in findings depending on tree species, climate, and soil composition.  Nevertheless, many agree that mycorrhizal networks play a critical—if not fully understood—role in forest resilience and nutrient cycling.`
+        ];
+
+        const questions = [
+            // Passage 1: Keynesian Economics
+            { passageIndex: 0, text: "Which of the following best describes the paradox of thrift as outlined in the passage?", options: ["Increased saving leads to increased investment and growth over time.", "Government spending is necessary in order to keep economies afloat during a downturn.", "An effort by many to save more during a downturn may cause total savings to fall.", "Consumer confidence rises when aggregate saving is high."], correctAnswer: "C", explanation: "C (Correct): The passage states, 'If many households simultaneously cut back on spending to increase savings... As incomes fall, total savings in the economy may paradoxically decline, despite each household trying to save more.'\nA (Incorrect): The paradox suggests the opposite in a downturn. While this can be true during full employment for the long-term, it is not the definition of the paradox itself as described for downturns.\nB (Incorrect): This is a Keynesian policy response to economic downturns, not the definition of the paradox itself.\nD (Incorrect): The passage mentions that empirical studies show abrupt increases in household savings rates often coincide with declining GDP and consumer confidence." },
+            { passageIndex: 0, text: "According to the passage, Keynes believed government intervention was essential because:", options: ["Public investment can make up for drops in consumer confidence.", "Rising wages during recessions reduce the need for saving.", "Interest rates can offset most private sector contraction.", "Households cannot manage their own finances effectively."], correctAnswer: "A", explanation: "A (Correct): The passage states Keynes argued intervention was 'essential to counteract the fall in aggregate demand caused by rising private saving.' A fall in aggregate demand is closely linked with, and can be exacerbated by, drops in consumer confidence. Government intervention, through fiscal stimulus and public investment, aims to boost this demand.\nB (Incorrect): The passage implies wages are likely to fall or stagnate during such periods, not rise.\nC (Incorrect): The passage notes that Keynesian ideas are particularly relevant in liquidity traps where monetary policy (like interest rate adjustments) loses effectiveness.\nD (Incorrect): The passage does not suggest this as Keynes's reasoning." },
+            { passageIndex: 0, text: "Which of the following would most weaken the Keynesian argument presented?", options: ["Historical data shows that government deficits tend to grow during recessions.", "Consumers often reduce their spending when inflation expectations rise.", "Recessions that involve higher savings are followed by stronger investment rebounds.", "Keynesian models fail to account for rising inequality during periods of growth."], correctAnswer: "C", explanation: "C (Correct): The Keynesian argument for the paradox of thrift is that increased collective saving during a downturn harms the economy by reducing demand and potentially overall savings. If recessions with higher savings were consistently followed by stronger investment rebounds, it would suggest that the savings were effectively channeled into productive investment, countering the idea that they simply vanish or worsen the slump, thus weakening the core of the paradox of thrift argument.\nA (Incorrect): This is often consistent with Keynesian policies (fiscal stimulus leading to deficits) and doesn't inherently weaken the argument about the paradox itself.\nB (Incorrect): While true, this describes a different economic behavior and doesn't directly contradict the mechanics of the paradox of thrift during a downturn characterized by deficient demand.\nD (Incorrect): This is a broader critique of Keynesian models and does not specifically target the paradox of thrift concerning recessions and savings." },
+            { passageIndex: 0, text: "The author implies that the paradox of thrift is least applicable in which of the following situations?", options: ["A recession where interest rates are stuck at near-zero levels.", "A period of rapid post-war economic expansion and full employment.", "An economy where most consumers increase saving due to uncertainty.", "A downturn where government spending is already at record levels."], correctAnswer: "B", explanation: "B (Correct): The passage explicitly states, 'The paradox does not apply in the same way during times of full employment. When an economy is at or near its productive capacity, increased saving can lead to more investment in capital goods rather than reduced demand.' Option B describes such a situation.\nA (Incorrect): This describes a liquidity trap, where the paradox of thrift is particularly relevant, and monetary policy is ineffective, making the case for Keynesian fiscal intervention stronger.\nC (Incorrect): This describes the exact scenario where the paradox of thrift is likely to manifest, as widespread increased saving reduces aggregate demand.\nD (Incorrect): The level of government spending doesn't change the applicability of the paradox itself, though it might affect policy choices regarding further intervention." },
+            
+            // Passage 2: Wangari Maathai
+            { passageIndex: 1, text: "What can be inferred about the challenges Maathai faced when promoting the Green Belt Movement in Kenya?", options: ["The primary difficulty was a lack of suitable land for tree planting.", "Her initiative clashed with prevailing political and social power structures.", "Most women in Kenya at the time had no interest in environmental issues.", "She failed to attract international recognition until late in life."], correctAnswer: "B", explanation: "B (Correct): The passage states she operated 'Against a backdrop of systemic gender bias,' her work was 'politically charged...in a nation marred by authoritarianism and corruption,' and she faced 'imprisonment, smear campaigns, and violent pushback.' These strongly indicate clashes with established political and social power structures.\nA (Incorrect): The passage does not mention lack of suitable land as a primary challenge.\nC (Incorrect): The success of her grassroots movement, which 'taught rural women to plant trees,' suggests this is false.\nD (Incorrect): While she received the Nobel Peace Prize in 2004, the passage describes her as becoming a 'global icon,' and the challenges mentioned relate to her on-the-ground work rather than a lack of international recognition being the primary obstacle to promotion." },
+            { passageIndex: 1, text: "According to the passage, which of the following best matches with Maathai's beliefs about the act of planting trees:", options: ["It was merely a symbolic act for environmental justice.", "It represented a philosophical act of agency and restoration.", "It addressed systemic flaws in an attempt to help rural women's economic, social and environmental lives.", "It was made more meaningful by governmental opposition."], correctAnswer: "C", explanation: "C (Correct): The passage states Maathai believed 'environmental degradation, poverty, and disenfranchisement were not separate issues but symptoms of the same systemic failure.' Her campaign 'taught rural women to plant trees, restore ecosystems, and earn income,' directly linking tree planting to addressing these interconnected issues, thereby aiming to improve their economic, social, and environmental lives by tackling systemic flaws.\nA (Incorrect): The quote, \"Until you dig a hole, you plant a tree, you water it and make it survive, you haven't done a thing,\" suggests a tangible, practical impact beyond mere symbolism.\nB (Incorrect): While true, option C is more comprehensive as it encompasses the economic and social dimensions explicitly mentioned in connection with systemic flaws.\nD (Incorrect): Governmental opposition was a challenge she overcame, but the passage doesn't suggest this was what imbued the act of tree planting with meaning for Maathai; its meaning was rooted in addressing systemic issues and empowering women." },
+            { passageIndex: 1, text: "Which of the following best describes the tone of the final paragraph?", options: ["Dismissive and neutral.", "Admiring and reflective.", "Critical and skeptical.", "Informative and detached."], correctAnswer: "B", explanation: "B (Correct): The final paragraph ('To reduce Maathai's life to environmental activism alone would be to overlook the philosophical core of her work...') uses appreciative language ('philosophical core,' 'dignity, participation, and ecology') and encourages a deeper understanding of her work. This reflects admiration and a thoughtful consideration of her legacy.\nA (Incorrect): The tone is not dismissive or neutral; it actively seeks to elevate the perception of her work.\nC (Incorrect): The tone is not critical or skeptical of Maathai; rather, it critiques a potentially superficial understanding of her contributions.\nD (Incorrect): While informative, the paragraph goes beyond mere detachment by offering an appreciative interpretation of her work's depth." },
+            { passageIndex: 1, text: "Which of the following, if true, would most strengthen the author's claim about Maathai's unique legacy?", options: ["Many Nobel Peace Prize recipients before Maathai also worked in rural Africa.", "New Kenyan forestry policies introduced in 2015 ignored most of her practices.", "Scientific studies showed tree-planting has only modest effects on carbon capture.", "Her movement inspired community-led conservation initiatives in multiple continents."], correctAnswer: "D", explanation: "D (Correct): The author portrays Maathai as a 'global icon' with a deep 'philosophical core' to her work. If her movement inspired similar initiatives on 'multiple continents,' it would strongly support the idea of a unique, widespread, and impactful legacy extending beyond Kenya.\nA (Incorrect): This might suggest her Nobel was less unique if many others had similar backgrounds, potentially weakening the emphasis on her distinctiveness.\nB (Incorrect): This would weaken the claim of a lasting, impactful legacy if her practices were later ignored in her own country.\nC (Incorrect): Focusing on only one specific scientific outcome of tree-planting (carbon capture) and finding it modest could be seen as diminishing one aspect of her practical work, thereby not strengthening the claim about her overall unique legacy, which was multifaceted." },
+            
+            // Passage 3: The Murray-Darling Basin Plan
+            { passageIndex: 2, text: "Which of the following is most likely implied by the passage about the Murray-Darling Basin Plan?", options: ["It has fully achieved its intended environmental goals.", "Its implementation has been hindered by political, legal, and environmental challenges.", "Farmers and ecologists are generally in agreement about its water recovery targets.", "It primarily aims to shift agricultural production away from water-intensive crops."], correctAnswer: "B", explanation: "B (Correct): The passage states the reform has been 'politically fraught,' targets have faced 'repeated delays,' there are 'accusations of water hoarding, illegal diversions, and weak enforcement,' and 'climate change has compounded pressures.' These all point to significant hindrances.\nA (Incorrect): This is contradicted by the mention of delays, ongoing debates, and warnings from ecologists and the CSIRO report.\nC (Incorrect): The passage explicitly states, 'Farmers argue the reductions limit their viability, while ecologists warn the cuts don't go far enough,' indicating disagreement.\nD (Incorrect): The primary aim mentioned is to 'rebalance environmental and economic demands by capping water usage and returning a portion to the environment,' not specifically to shift crop types, though that could be an indirect outcome." },
+            { passageIndex: 2, text: "According to the passage, which of the following most accurately reflects the impact of climate change on the Basin?", options: ["It has caused a permanent shift in the course of the rivers.", "It has improved agricultural viability in the northern Basin.", "It has intensified drought patterns and reduced rainfall in key areas.", "It has had minimal effect due to the region's water storage infrastructure."], correctAnswer: "C", explanation: "C (Correct): The passage states, 'Rainfall in the southern Basin has declined significantly over the past two decades, and longer droughts have become more frequent.' This directly supports the intensification of drought and reduced rainfall.\nA (Incorrect): The passage does not mention a permanent shift in river courses.\nB (Incorrect): The passage indicates climate change has compounded pressures and reduced rainfall, suggesting a negative impact on viability, not an improvement.\nD (Incorrect): The passage implies climate change is a significant problem that current models may not cope with, suggesting its effect is not minimal." },
+            { passageIndex: 2, text: "What does the author most likely believe is necessary for future water management in the Basin?", options: ["Increased export of irrigation water to northern states.", "A model that adjusts for both short-term weather and long-term climate trends.", "A ban on agricultural irrigation in drought-prone zones.", "The withdrawal of farming operations from protected river zones."], correctAnswer: "B", explanation: "B (Correct): The passage concludes by mentioning that 'calls are growing for a more adaptive model—one that accounts not just for annual rainfall, but for long-term climate variability and enforceable environmental safeguards.' This indicates the author sees such a model as necessary.\nA (Incorrect): The passage discusses problems with water extraction, not the need for increased export.\nC (Incorrect): While plausible, the author doesn't explicitly call for a ban, but rather a more adaptive model.\nD (Incorrect): Similar to C, this is a specific action not directly advocated for by the author in the call for an adaptive model." },
+            { passageIndex: 2, text: "Which of the following, if true, would most seriously weaken the rationale for continuing with the current Basin Plan targets?", options: ["The current environmental water recovery target is slightly below original estimates.", "Communities downstream report improvements in river health following controlled releases.", "New satellite data reveals that groundwater reserves are more stable than previously thought.", "Long-term climate projections show river flows will decline regardless of recovery targets."], correctAnswer: "D", explanation: "D (Correct): The rationale for the current targets is to improve river health and sustainability. If long-term projections show flows will decline severely regardless of these targets, it suggests the current plan might be insufficient or futile in achieving its ultimate goals, thus weakening the rationale for continuing with those specific targets without major reassessment.\nA (Incorrect): This might prompt adjustments but doesn't fundamentally weaken the rationale for having recovery targets.\nB (Incorrect): This would strengthen the rationale for the Plan by showing positive outcomes.\nC (Incorrect): While relevant to water resources, the Basin Plan primarily focuses on surface water recovery for river systems, so groundwater stability doesn't directly weaken the rationale for *those* specific targets." },
+            
+            // Passage 4: Mycorrhizal Networks
+            { passageIndex: 3, text: "Mature trees have been shown to support younger trees by transferring carbon through mycorrhizal networks.", options: ["True", "False", "Can't Tell"], correctAnswer: "A", explanation: "A (Correct): The passage directly states, 'In some documented cases, older trees have sent carbon-rich compounds to saplings that were shaded and unable to photosynthesise effectively.'\nB (Incorrect): This contradicts the textual evidence.\nC (Incorrect): The passage provides the information." },
+            { passageIndex: 3, text: "All scientists now accept that trees use mycorrhizal networks to communicate.", options: ["True", "False", "Can't Tell"], correctAnswer: "B", explanation: "B (Correct): The passage states, 'However, this view is not without critics. Some scientists caution that attributing intentionality or communication to trees anthropomorphises what could be basic chemical signaling.' This indicates that not all scientists accept the communication aspect unequivocally.\nA (Incorrect): The presence of critics contradicts this.\nC (Incorrect): The passage provides information about the differing views." },
+            { passageIndex: 3, text: "The relationship between trees and fungi always benefits both species equally.", options: ["True", "False", "Can't Tell"], correctAnswer: "C", explanation: "C (Correct): The passage describes the relationship as a 'mutual exchange' and 'symbiotic connections,' indicating both benefit. However, it does not specify that the benefits are 'always equally' distributed. The precise quantification or equality of benefit is not addressed.\nA (Incorrect): The passage doesn't state the benefits are always equal.\nB (Incorrect): The passage describes it as mutualistic, implying benefit to both, just not necessarily equal." },
+            { passageIndex: 3, text: "A significant shift in forest ecology has been the move from viewing trees as individuals to viewing them as interconnected.", options: ["True", "False", "Can't Tell"], correctAnswer: "A", explanation: "A (Correct): The passage states the discovery of the 'wood wide web' 'has led to a reconsideration of forest ecology, shifting the perception of trees from solitary organisms to members of interdependent communities.'\nB (Incorrect): This contradicts the textual evidence of a shift in perception.\nC (Incorrect): The passage explicitly describes this shift." }
+        ];
+
+        // --- State ---
+        let currentQuestionIndex = 0;
+        let userAnswers = new Array(questions.length).fill(null);
+        let timerInterval;
+        let timeLeft = 10 * 60; // 10 minutes in seconds for 16 questions
+        let examStartTime;
+        let examEndTime;
+        let userName = '';
+        let userGoal = '';
+        let userFocusArea = '';
+        let isReviewingFromResults = false;
+        let questionStartTime = null;
+        let questionTimes = new Array(questions.length).fill(0);
+        let flaggedQuestions = new Array(questions.length).fill(false);
+        let isFilteringFlagged = false;
+        let currentlyDisplayedPassageIndex = -1;
+
+
+        // --- Elements ---
+        const appContainer = document.getElementById('app-container');
+        const setupScreen = document.getElementById('setup-screen');
+        const examScreen = document.getElementById('exam-screen');
+        const reviewScreen = document.getElementById('review-screen');
+        const resultsScreen = document.getElementById('results-screen');
+        const navigatorModal = document.getElementById('navigator-modal');
+        const startButton = document.getElementById('start-button');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const navigatorButton = document.getElementById('navigator-button');
+        const closeModalButton = document.getElementById('close-modal-button');
+        const endExamButton = document.getElementById('end-exam-button'); 
+        const endExamButtonFooter = document.getElementById('end-exam-button-footer'); 
+        const backToResultsButton = document.getElementById('back-to-results-button');
+        const flagButton = document.getElementById('flag-button');
+        const passageNumberEl = document.getElementById('passage-number');
+        const passageTextEl = document.getElementById('passage-text');
+        const questionNumberEl = document.getElementById('question-number');
+        const questionNumberInfoEl = document.getElementById('question-number-info');
+        const questionTextEl = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const timerEl = document.getElementById('timer');
+        const reviewGrid = document.getElementById('review-grid');
+        const navigatorGrid = document.getElementById('navigator-grid');
+        const scoreEl = document.getElementById('score');
+        const totalQuestionsResultsEl = document.getElementById('total-questions-results');
+        const timeTakenEl = document.getElementById('time-taken');
+        const resultsGridContainer = document.getElementById('results-grid-container'); 
+        const nameInput = document.getElementById('name');
+        const goalInput = document.getElementById('goal');
+        const focusAreaInput = document.getElementById('focus-area');
+        const examTitleEl = document.getElementById('exam-title');
+        const filterFlaggedButton = document.getElementById('filter-flagged-button');
+        const setupQuestionCountEl = document.getElementById('setup-question-count');
+        const setupTimeLimitEl = document.getElementById('setup-time-limit');
+        const reviewExplanationContainer = document.getElementById('review-explanation-container');
+        const reflectionText = document.getElementById('reflection-text');
+        const downloadPdfButton = document.getElementById('download-pdf-button');
+        const focusRatingInput = document.getElementById('focus-rating');
+
+
+
+        // --- Functions ---
+
+        function startTimer() {
+            examStartTime = new Date();
+            clearInterval(timerInterval);
+            timerEl.textContent = formatTimeSeconds(timeLeft);
+            timerEl.classList.remove('text-gray-300'); 
+            timerEl.classList.add('text-white', 'bg-opacity-20', 'bg-white');
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = formatTimeSeconds(timeLeft);
+                if (timeLeft <= 0) {
+                    endExamAndShowResults();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            examEndTime = examEndTime || new Date(); 
+            timerEl.classList.remove('text-white', 'bg-opacity-20', 'bg-white');
+            timerEl.classList.add('text-gray-300'); 
+        }
+
+        function formatTimeSeconds(totalSeconds) {
+             if (totalSeconds < 0) totalSeconds = 0; 
+             const minutes = Math.floor(totalSeconds / 60);
+             const seconds = totalSeconds % 60;
+             return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+
+        function formatTimeDifference(milliseconds) {
+            if (!milliseconds || milliseconds < 0) return "0 min 00 sec";
+            const totalSeconds = Math.round(milliseconds / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes} min ${seconds < 10 ? '0' : ''}${seconds} sec`;
+        }
+
+        
+        function recordTimeSpent(index) {
+            if (questionStartTime && index >= 0 && index < questions.length) {
+                const timeSpent = Date.now() - questionStartTime;
+                questionTimes[index] = (questionTimes[index] || 0) + timeSpent; 
+            }
+            questionStartTime = null; 
+        }
+
+        
+        function toggleFlag() {
+            if (isReviewingFromResults) return; 
+            const index = currentQuestionIndex;
+            flaggedQuestions[index] = !flaggedQuestions[index];
+            updateFlagButtonAppearance();
+            updateNavigatorButtons(); 
+        }
+
+        
+        function updateFlagButtonAppearance() {
+            const isFlagged = flaggedQuestions[currentQuestionIndex];
+            flagButton.textContent = isFlagged ? 'Unflag' : 'Flag for Review';
+            flagButton.classList.toggle('flagged', isFlagged);
+        }
+
+
+        function loadQuestion(index, reviewMode = false) {
+            if (index < 0 || index >= questions.length) return;
+
+             
+             if (!isReviewingFromResults && !reviewMode) { 
+                 recordTimeSpent(currentQuestionIndex);
+            }
+
+            const question = questions[index];
+            const newPassageIndex = question.passageIndex;
+            const passageContainer = document.querySelector('.passage-column');
+            const questionContainer = document.querySelector('.question-column');
+
+            
+            if (newPassageIndex !== currentlyDisplayedPassageIndex || reviewMode) {
+                passageTextEl.innerHTML = passages[newPassageIndex].replace(/\n/g, '<br><br>');
+                passageNumberEl.textContent = newPassageIndex + 1;
+                currentlyDisplayedPassageIndex = newPassageIndex;
+                 if (passageContainer) passageContainer.scrollTop = 0; 
+            }
+
+            currentQuestionIndex = index;
+            isReviewingFromResults = reviewMode; 
+
+            questionNumberEl.textContent = index + 1;
+            questionNumberInfoEl.textContent = `${index + 1} of ${questions.length}`;
+            questionTextEl.textContent = question.text;
+             if (questionContainer) questionContainer.scrollTop = 0; 
+
+            optionsContainer.innerHTML = '';
+            reviewExplanationContainer.innerHTML = ''; 
+            const optionLetters = ['A', 'B', 'C', 'D', 'E']; 
+            question.options.forEach((option, i) => {
+                const optionId = `q${index}_opt${i}`;
+                const label = document.createElement('label');
+                label.htmlFor = optionId;
+                label.classList.add('option-label'); // Styles for this are in CSS, including text color and size
+                label.dataset.optionIndex = i; 
+
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.id = optionId;
+                radio.name = `question_${index}`;
+                radio.value = optionLetters[i]; 
+                radio.disabled = reviewMode; 
+
+                
+                label.classList.remove('border-green-500', 'border-red-500', 'border-2', 'bg-green-50', 'bg-red-50', 'selected-answer');
+                label.style.cursor = reviewMode ? 'default' : 'pointer';
+
+
+                if (userAnswers[index] === optionLetters[i]) {
+                    radio.checked = true;
+                    label.classList.add('selected-answer');
+                }
+
+                
+                if (reviewMode) {
+                    const isCorrectAnswer = question.correctAnswer === optionLetters[i];
+                    const isSelectedAnswer = userAnswers[index] === optionLetters[i];
+
+                    if (isCorrectAnswer) {
+                        label.classList.add('border-green-500', 'border-2'); 
+                        if (!isSelectedAnswer) label.classList.add('bg-green-50'); 
+                    } else if (isSelectedAnswer) { 
+                        label.classList.add('border-red-500', 'border-2', 'bg-red-50');
+                    }
+                }
+
+                label.appendChild(radio);
+                const textNode = document.createTextNode(`${optionLetters[i]}) ${option}`);
+                label.appendChild(textNode);
+
+                if (!reviewMode) {
+                    label.addEventListener('click', (e) => {
+                        
+                        if (e.target.tagName !== 'INPUT') {
+                            handleOptionSelect(index, i, optionLetters[i]);
+                        }
+                    });
+                    radio.addEventListener('change', () => handleOptionSelect(index, i, optionLetters[i]));
+                }
+                optionsContainer.appendChild(label);
+            });
+
+            
+            if (reviewMode && question.explanation) {
+                const explanationDiv = document.createElement('div');
+                explanationDiv.classList.add('explanation-box'); 
+                explanationDiv.innerHTML = `<strong class="font-semibold">Explanation:</strong> ${question.explanation.replace(/\n/g, '<br>')}`; 
+                reviewExplanationContainer.appendChild(explanationDiv);
+            }
+            
+
+
+            prevButton.disabled = index === 0;
+            if (!reviewMode && index === questions.length - 1) { 
+                 nextButton.textContent = 'Finish & Review';
+                 nextButton.disabled = false;
+            } else if (!reviewMode) { 
+                 nextButton.textContent = 'Next (Alt+N) →';
+                 nextButton.disabled = false;
+            } else { 
+                 nextButton.disabled = index === questions.length - 1;
+                 if (!nextButton.disabled) nextButton.textContent = 'Next →'; 
+            }
+
+            updateFlagButtonAppearance();
+
+            
+            if (reviewMode) {
+                backToResultsButton.classList.remove('hidden');
+                endExamButtonFooter.classList.add('hidden');
+                examTitleEl.textContent = "Reviewing Question";
+                prevButton.disabled = index === 0; 
+                navigatorButton.disabled = false; 
+                flagButton.disabled = true; 
+            } else { 
+                backToResultsButton.classList.add('hidden');
+                endExamButtonFooter.classList.remove('hidden');
+                examTitleEl.textContent = "Verbal Reasoning";
+                navigatorButton.disabled = false;
+                flagButton.disabled = false;
+                prevButton.disabled = index === 0;
+            }
+
+            updateNavigatorHighlight(); 
+
+            
+            if (!isReviewingFromResults) { 
+                questionStartTime = Date.now();
+            }
+        }
+
+         function handleOptionSelect(questionIndex, optionIndex, optionValue) {
+             
+             if (questionIndex !== currentQuestionIndex || isReviewingFromResults) return;
+             userAnswers[questionIndex] = optionValue;
+
+             
+             document.querySelectorAll(`#options-container .option-label`).forEach(lbl => {
+                 lbl.classList.remove('selected-answer');
+                 const radio = lbl.querySelector('input[type="radio"]');
+                 if(radio) radio.checked = false; 
+             });
+
+             const selectedLabel = document.querySelector(`#options-container label[for="q${questionIndex}_opt${optionIndex}"]`);
+              if (selectedLabel) {
+                 selectedLabel.classList.add('selected-answer');
+                 const radio = selectedLabel.querySelector('input[type="radio"]');
+                 if (radio) radio.checked = true; 
+             }
+             updateNavigatorButtons(); 
+         }
+
+
+        function showNextQuestion() {
+            if (isReviewingFromResults) { 
+                if (currentQuestionIndex < questions.length - 1) {
+                    loadQuestion(currentQuestionIndex + 1, true); 
+                }
+            }
+            else if (!isReviewingFromResults) { 
+                 recordTimeSpent(currentQuestionIndex); 
+                 if (currentQuestionIndex === questions.length - 1) { 
+                     stopTimer(); 
+                     showReviewScreen(); 
+                 } else if (currentQuestionIndex < questions.length - 1) {
+                     loadQuestion(currentQuestionIndex + 1); 
+                 }
+            }
+        }
+
+
+        function showPrevQuestion() {
+             if (isReviewingFromResults) { 
+                 if (currentQuestionIndex > 0) {
+                     loadQuestion(currentQuestionIndex - 1, true); 
+                 }
+             }
+            else if (currentQuestionIndex > 0 && !isReviewingFromResults) { 
+                 recordTimeSpent(currentQuestionIndex); 
+                 loadQuestion(currentQuestionIndex - 1);
+            }
+        }
+
+        function showSetupScreen() {
+            setupScreen.classList.remove('hidden');
+            examScreen.classList.add('hidden');
+            reviewScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            appContainer.classList.remove('flex', 'flex-col'); 
+            currentlyDisplayedPassageIndex = -1; 
+            
+            if (setupQuestionCountEl) setupQuestionCountEl.textContent = questions.length;
+            if (setupTimeLimitEl) setupTimeLimitEl.textContent = `${Math.floor(timeLeft / 60)} minutes`;
+
+        }
+
+        function showExamScreen() {
+            setupScreen.classList.add('hidden');
+            examScreen.classList.remove('hidden');
+            examScreen.classList.add('flex'); 
+            reviewScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            appContainer.classList.add('flex', 'flex-col'); 
+            currentlyDisplayedPassageIndex = -1; 
+        }
+
+
+        function showReviewScreen(filterFlagged = false) {
+            recordTimeSpent(currentQuestionIndex); 
+            stopTimer(); 
+
+            examScreen.classList.add('hidden');
+            reviewScreen.classList.remove('hidden');
+            reviewScreen.classList.add('flex');
+            resultsScreen.classList.add('hidden');
+            setupScreen.classList.add('hidden');
+            appContainer.classList.add('flex', 'flex-col');
+
+            reviewGrid.innerHTML = ''; 
+            questions.forEach((_, index) => {
+                 if (filterFlagged && !flaggedQuestions[index]) { 
+                     return;
+                 }
+
+                const button = document.createElement('button');
+                button.textContent = index + 1;
+                button.className = 'review-grid-button'; 
+
+                if (userAnswers[index] !== null && userAnswers[index] !== undefined) {
+                    button.classList.add('review-grid-button-answered');
+                } else {
+                     button.classList.add('review-grid-button-unanswered');
+                }
+
+                if (flaggedQuestions[index]) {
+                    button.classList.add('review-flagged'); 
+                }
+
+                button.onclick = () => {
+                    reviewScreen.classList.add('hidden'); 
+                    reviewScreen.classList.remove('flex');
+                    showExamScreen(); 
+                    loadQuestion(index); 
+                    startTimer(); 
+                };
+                reviewGrid.appendChild(button);
+            });
+
+             filterFlaggedButton.textContent = filterFlagged ? 'Show All Questions' : 'Show Flagged Only';
+        }
+
+         function populateNavigator() {
+             navigatorGrid.innerHTML = ''; 
+             questions.forEach((_, index) => {
+                 const button = document.createElement('button');
+                 button.textContent = index + 1;
+                 
+                 button.classList.add('py-2', 'px-1', 'border', 'border-gray-300', 'rounded-md', 'text-center', 'transition', 'duration-150', 'ease-in-out', 'text-sm', 'hover:bg-gray-100');
+                 button.dataset.questionIndex = index; 
+
+                 
+                 if (userAnswers[index]) button.classList.add('nav-answered');
+                 if (index === currentQuestionIndex) button.classList.add('nav-current');
+                 if (flaggedQuestions[index]) button.classList.add('nav-flagged');
+
+                 button.onclick = () => {
+                     navigatorModal.classList.remove('flex'); 
+                     navigatorModal.classList.add('hidden');
+                     const targetIndex = parseInt(button.dataset.questionIndex, 10);
+                     
+                     loadQuestion(targetIndex, isReviewingFromResults);
+                     if (!isReviewingFromResults) questionStartTime = Date.now(); 
+                 };
+                 navigatorGrid.appendChild(button);
+             });
+         }
+
+        function updateNavigatorButtons() {
+             if (!navigatorGrid) return;
+             const buttons = navigatorGrid.querySelectorAll('button');
+             buttons.forEach(button => {
+                 const index = parseInt(button.dataset.questionIndex, 10);
+                 button.classList.remove('nav-answered', 'nav-current', 'nav-flagged'); 
+                 if (userAnswers[index]) button.classList.add('nav-answered');
+                 if (index === currentQuestionIndex) button.classList.add('nav-current');
+                 if (flaggedQuestions[index]) button.classList.add('nav-flagged');
+             });
+        }
+
+         function updateNavigatorHighlight() {
+             if (!navigatorGrid) return;
+             const buttons = navigatorGrid.querySelectorAll('button');
+             buttons.forEach(button => {
+                 const index = parseInt(button.dataset.questionIndex, 10);
+                 button.classList.remove('nav-current');
+                 if (index === currentQuestionIndex) button.classList.add('nav-current');
+             });
+         }
+
+        function showResultsScreen() {
+            examEndTime = examEndTime || new Date(); 
+            recordTimeSpent(currentQuestionIndex); 
+            stopTimer(); 
+
+            examScreen.classList.add('hidden');
+            reviewScreen.classList.add('hidden');
+            reviewScreen.classList.remove('flex');
+            resultsScreen.classList.remove('hidden');
+            resultsScreen.classList.add('flex');
+            setupScreen.classList.add('hidden');
+            appContainer.classList.add('flex', 'flex-col');
+
+            let score = 0;
+            resultsGridContainer.innerHTML = ''; 
+
+            questions.forEach((qData, index) => {
+                const userAnswer = userAnswers[index];
+                const correctAnswer = qData.correctAnswer;
+                const isCorrect = userAnswer !== null && userAnswer !== undefined && userAnswer === correctAnswer;
+                if (isCorrect) score++;
+
+                const timeSpentMs = questionTimes[index] || 0; 
+                const timeSpentSec = Math.round(timeSpentMs / 1000);
+
+                const resultBox = document.createElement('div');
+                resultBox.classList.add('result-box');
+                resultBox.classList.add(isCorrect ? 'result-box-correct' : 'result-box-incorrect');
+                if (flaggedQuestions[index]) {
+                    resultBox.classList.add('result-box-flagged');
+                }
+                resultBox.dataset.index = index; 
+                resultBox.title = `Click to review Question ${index + 1}`;
+
+                const timeDiv = document.createElement('div');
+                timeDiv.classList.add('time-spent');
+                timeDiv.textContent = `${timeSpentSec}s`;
+                resultBox.appendChild(timeDiv);
+
+                const container = document.createElement('div');
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.alignItems = 'center';
+                container.appendChild(resultBox);
+
+                const qNumDiv = document.createElement('div');
+                qNumDiv.classList.add('question-num-label');
+                qNumDiv.textContent = `Q${index + 1}`;
+                container.appendChild(qNumDiv);
+                
+                container.addEventListener('click', () => {
+                    revisitQuestionFromResults(index);
+                });
+                resultsGridContainer.appendChild(container);
+            });
+
+            scoreEl.textContent = score;
+            totalQuestionsResultsEl.textContent = questions.length;
+            const timeDiff = examEndTime - examStartTime;
+            timeTakenEl.textContent = formatTimeDifference(timeDiff);
+        }
+
+
+        function revisitQuestionFromResults(index) {
+            resultsScreen.classList.add('hidden');
+            resultsScreen.classList.remove('flex');
+            showExamScreen();
+            loadQuestion(index, true); 
+        }
+
+        function endExamAndShowResults() {
+            stopTimer(); 
+            showResultsScreen();
+        }
+         function handleEndExamFooterClick() {
+             recordTimeSpent(currentQuestionIndex); 
+             stopTimer();
+             showReviewScreen(); 
+         }
+
+        
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const reflection = reflectionText.value.trim();
+            const focusRating = focusRatingInput.value; 
+            const finalScore = scoreEl.textContent;
+            const totalQ = totalQuestionsResultsEl.textContent; 
+            const timeTaken = timeTakenEl.textContent;
+
+            let y = 15; 
+            const lineHeight = 7;
+            const pageHeight = doc.internal.pageSize.height;
+            const margin = 15;
+            const pageWidth = doc.internal.pageSize.width;
+
+
+            
+            doc.setFontSize(18);
+            doc.text("UCAT Verbal Reasoning Results", pageWidth / 2, y, { align: 'center' });
+            y += lineHeight * 2;
+
+            
+            doc.setFontSize(12);
+            const summaryData = [
+                ["Name:", userName || 'N/A'],
+                ["Goal:", `${userGoal || 'N/A'} / ${totalQ}`],
+                ["Focus Area:", userFocusArea || 'N/A'],
+                ["Final Score:", `${finalScore} / ${totalQ}`],
+                ["Time Taken:", timeTaken],
+                ["Focus Rating (1-5):", focusRating || 'N/A']
+            ];
+
+            summaryData.forEach(row => {
+                if (y > pageHeight - margin - lineHeight) { doc.addPage(); y = margin; }
+                doc.setFont(undefined, 'bold');
+                doc.text(row[0], margin, y);
+                doc.setFont(undefined, 'normal');
+                doc.text(row[1], margin + 40, y);
+                y += lineHeight;
+            });
+            y += lineHeight; 
+
+            
+            if (y > pageHeight - margin - (lineHeight*3)) { doc.addPage(); y = margin; } 
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text("Main Takeaway:", margin, y);
+            y += lineHeight;
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            const reflectionLines = doc.splitTextToSize(reflection || 'No reflection provided.', pageWidth - margin * 2);
+            reflectionLines.forEach(line => {
+                if (y > pageHeight - margin - lineHeight) { doc.addPage(); y = margin; }
+                doc.text(line, margin, y);
+                y += (lineHeight * 0.8);
+            });
+            y += lineHeight; 
+
+            
+            if (y > pageHeight - margin - (lineHeight*2)) { doc.addPage(); y = margin; }
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text("Detailed Results:", margin, y);
+            y += lineHeight * 1.5;
+            doc.setFontSize(9); 
+            doc.setFont(undefined, 'normal');
+
+            
+            questions.forEach((qData, index) => {
+                const userAnswer = userAnswers[index];
+                const correctAnswer = qData.correctAnswer;
+                const isCorrect = userAnswer !== null && userAnswer !== undefined && userAnswer === correctAnswer;
+                const status = isCorrect ? "Correct" : (userAnswer ? "Incorrect" : "Not Answered");
+                const timeSpentSec = Math.round((questionTimes[index] || 0) / 1000);
+
+                const questionDetails = [
+                    `Q${index + 1}: ${qData.text.substring(0, 60)}...${flaggedQuestions[index] ? ' (Flagged)' : ''}`,
+                    `  Your Answer: ${userAnswer || 'N/A'}`,
+                    `  Correct Answer: ${correctAnswer}`,
+                    `  Status: ${status}`,
+                    `  Time: ${timeSpentSec}s`
+                ];
+
+                
+                const blockHeight = questionDetails.length * (lineHeight * 0.75) + (qData.explanation ? 3 * (lineHeight*0.75) : 0);
+                if (y + blockHeight > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin; 
+                    
+                    doc.setFontSize(14); doc.setFont(undefined, 'bold');
+                    doc.text("Detailed Results (Continued):", margin, y);
+                    y += lineHeight * 1.5;
+                    doc.setFontSize(9); doc.setFont(undefined, 'normal');
+                }
+
+                questionDetails.forEach(detailLine => {
+                    doc.text(detailLine, margin, y);
+                    y += (lineHeight * 0.75);
+                });
+
+                if (qData.explanation) {
+                    const explLines = doc.splitTextToSize(`  Explanation: ${qData.explanation.replace(/\n/g, ' ')}`, pageWidth - (margin * 2.5)); 
+                    explLines.forEach(explLine => {
+                         if (y > pageHeight - margin - lineHeight) { doc.addPage(); y = margin; }
+                         doc.text(explLine, margin + 5, y); 
+                         y += (lineHeight * 0.75);
+                    });
+                }
+                y += (lineHeight * 0.5); 
+            });
+
+            doc.save(`ucat_vr_results_${userName.replace(/\s+/g, '_') || 'user'}.pdf`);
+        }
+
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', () => {
+            userName = nameInput.value.trim();
+            userGoal = goalInput.value.trim();
+            userFocusArea = focusAreaInput.value.trim();
+
+            
+            timeLeft = 10 * 60; 
+            userAnswers = new Array(questions.length).fill(null);
+            questionTimes = new Array(questions.length).fill(0);
+            flaggedQuestions = new Array(questions.length).fill(false);
+            questionStartTime = null;
+            currentQuestionIndex = 0;
+            isReviewingFromResults = false;
+            isFilteringFlagged = false; 
+            currentlyDisplayedPassageIndex = -1; 
+
+            showExamScreen();
+            startTimer(); 
+            loadQuestion(0);
+            populateNavigator(); 
+        });
+
+        nextButton.addEventListener('click', showNextQuestion);
+        prevButton.addEventListener('click', showPrevQuestion);
+        endExamButton.addEventListener('click', endExamAndShowResults); 
+        endExamButtonFooter.addEventListener('click', handleEndExamFooterClick); 
+        backToResultsButton.addEventListener('click', () => {
+            isReviewingFromResults = false; 
+            showResultsScreen(); 
+        });
+        navigatorButton.addEventListener('click', () => {
+             recordTimeSpent(currentQuestionIndex); 
+            updateNavigatorButtons(); 
+            navigatorModal.classList.remove('hidden');
+            navigatorModal.classList.add('flex');
+        });
+        closeModalButton.addEventListener('click', () => {
+             navigatorModal.classList.remove('flex');
+             navigatorModal.classList.add('hidden');
+             if (!isReviewingFromResults) questionStartTime = Date.now(); 
+        });
+        
+        navigatorModal.addEventListener('click', (event) => {
+            if (event.target === navigatorModal) closeModalButton.click();
+        });
+
+        flagButton.addEventListener('click', toggleFlag);
+
+        filterFlaggedButton.addEventListener('click', () => {
+            isFilteringFlagged = !isFilteringFlagged;
+            showReviewScreen(isFilteringFlagged); 
+        });
+
+        
+        downloadPdfButton.addEventListener('click', generatePDF);
+
+
+        
+        function handleKeyboardShortcuts(e) {
+             const isExamVisible = !examScreen.classList.contains('hidden');
+             const isModalVisible = navigatorModal.classList.contains('flex');
+             
+             const isInputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+
+             if (isModalVisible || isInputFocused) return; 
+             if (!isExamVisible) return; 
+
+             const key = e.key.toLowerCase();
+             const altOrOption = e.altKey; 
+             const code = e.code.toLowerCase(); 
+
+             if (altOrOption) {
+                 switch (code) { 
+                     case 'keyn': 
+                         e.preventDefault();
+                         if (!nextButton.disabled) nextButton.click();
+                         return;
+                     case 'keyp': 
+                         e.preventDefault();
+                         if (!prevButton.disabled) prevButton.click();
+                         return;
+                     case 'keyf': 
+                         e.preventDefault();
+                         if (!isReviewingFromResults && !flagButton.disabled) flagButton.click();
+                         return;
+                     default:
+                         return; 
+                 }
+             } else { 
+                 
+                 if (['a', 'b', 'c', 'd'].includes(key) && !isReviewingFromResults) {
+                     e.preventDefault();
+                     const optionIndex = ['a', 'b', 'c', 'd'].indexOf(key);
+                     const optionValue = ['A', 'B', 'C', 'D'][optionIndex];
+                     const currentQuestionData = questions[currentQuestionIndex];
+                     if (optionIndex < currentQuestionData.options.length) { 
+                         handleOptionSelect(currentQuestionIndex, optionIndex, optionValue);
+                     }
+                     return;
+                 }
+             }
+        }
+
+        document.addEventListener('keydown', handleKeyboardShortcuts);
+
+
+        // --- Initial Load ---
+        showSetupScreen(); // Start with the setup screen
+
+    </script>
+</body>
+</html>
